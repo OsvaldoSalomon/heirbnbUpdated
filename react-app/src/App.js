@@ -1,50 +1,78 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Route, Switch } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import LoginForm from './components/auth/LoginForm';
-import SignUpForm from './components/auth/SignUpForm';
-import NavBar from './components/NavBar';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import UsersList from './components/UsersList';
-import User from './components/User';
-import { authenticate } from './store/session';
+import React, { useState, useEffect } from "react";
+import { BrowserRouter, Route, Switch } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { authenticate } from "./store/session";
+import { getSpots } from "./store/spots";
+import { getReviews } from "./store/reviews";
+import { getBookings } from "./store/bookings";
+import Navigation from "./components/Navigation/index";
+import UserViewPage from "./components/UserViewPage";
+import CreateSpot from "./components/Spots/SpotsForm/CreateSpot";
+import SingleSpot from "./components/Spots/SingleSpot/SingleSpot";
+import EditSpot from "./components/Spots/SpotsForm/EditSpot";
+import HomePage from "./components/UserPage/HomePage";
+import ProfileRoutes from "./components/UserPage/ProfilePage";
+import PageNotFound from "./components/PageNotFound";
+import SearchResults from "./components/UserPage/SearchResults";
+import loader from "./images/loading.gif";
 
 function App() {
-  const [loaded, setLoaded] = useState(false);
   const dispatch = useDispatch();
+  const spots = Object.values(useSelector(state => state.spot));
+  const [filtered, setFiltered] = useState(spots);
+  const [loaded, setLoaded] = useState(false);
+
+  const user = useSelector(state => state.session.user)
 
   useEffect(() => {
-    (async() => {
+    (async () => {
       await dispatch(authenticate());
+      await dispatch(getSpots());
+      await dispatch(getReviews());
+      await dispatch(getBookings());
       setLoaded(true);
     })();
   }, [dispatch]);
 
   if (!loaded) {
-    return null;
+    return <img className="loading" src={loader} alt="loader" />;
   }
-
   return (
     <BrowserRouter>
-      <NavBar />
+      <Navigation spots={spots} setFiltered={setFiltered} />
       <Switch>
-        <Route path='/login' exact={true}>
-          <LoginForm />
+        <Route path="/" exact={true}>
+          <UserViewPage />
         </Route>
-        <Route path='/sign-up' exact={true}>
-          <SignUpForm />
-        </Route>
-        <ProtectedRoute path='/users' exact={true} >
-          <UsersList/>
+        <ProtectedRoute path="/query" exact={true}>
+          <SearchResults filtered={filtered} />
         </ProtectedRoute>
-        <ProtectedRoute path='/users/:userId' exact={true} >
-          <User />
+        <ProtectedRoute
+          path={[
+            "/profile",
+            "/profile/listings",
+          ]}
+          exact={true}
+        >
+          <ProfileRoutes />
         </ProtectedRoute>
-        <Route path='/' exact={true} >
-          <h1>My Home Page</h1>
-        </Route>
+        <ProtectedRoute path="/spots/new" exact={true}>
+          <CreateSpot />
+        </ProtectedRoute>
+        <ProtectedRoute path="/spots/:spotId" exact={true}>
+          <SingleSpot setLoaded={setLoaded} loaded={loaded} />
+        </ProtectedRoute>
+        <ProtectedRoute path="/spots/:spotId/edit" exact={true}>
+          <EditSpot />
+        </ProtectedRoute>
+        <ProtectedRoute path="/spots/types/:design_type" exact={true}>
+          <HomePage />
+        </ProtectedRoute>
+        <PageNotFound />
       </Switch>
-    </BrowserRouter>
+    </BrowserRouter >
   );
 }
 
